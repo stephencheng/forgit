@@ -25,6 +25,56 @@ forgit::log() {
         FZF_DEFAULT_OPTS="$opts" fzf
 }
 
+# git choose to use git dt-kitty or other tools to do diff
+# default enter => use fancy difftool to view only the commit changeset
+# changeset from selected commit to master:
+#            F2 => use kitty difftool
+#            F3 => use difffancy difftool
+#            F3 => use macvim difftool
+#            F4 => use icdiff difftool
+
+
+# --bind=\"enter:execute-multi($debugcmd)\"
+forgit::diffbox() {
+    forgit::inside_work_tree || return 1
+    local dtfancydiffcmdsingle opts dtkittycmd dtmacvimcmd dticdiffcmd
+    dtfancydiffcmdsingle="echo {} |grep -Eo '[a-f0-9]+' |head -1 |xargs -I% git show --color=always % $* $forgit_fancy"
+
+    dtkittycmd="echo {} |grep -Eo '[a-f0-9]+' |head -1 |xargs -I% git dt-kitty %"
+    dtmacvimcmd="echo {} |grep -Eo '[a-f0-9]+' |head -1 |xargs -I% git dt %"
+    dticdiffcmd="echo {} |grep -Eo '[a-f0-9]+' |head -1 |xargs -I% git icdiff %"
+    dtfancydiffcmd="echo {} |grep -Eo '[a-f0-9]+' |head -1 |xargs -I% git diff --color=always % $* $forgit_fancy"
+
+    # debugcmd="echo {} |grep -Eo '[a-f0-9]+' |head -1 |xargs -I% git dt-kitty %"
+    # debugcmd="echo {} > /tmp/abcde"
+    # debugcmd="echo {} |grep -Eo '[a-f0-9]+' |head -1 > /tmp/abcde"
+    opts="
+        $FORGIT_FZF_DEFAULT_OPTS
+        +s -m --tiebreak=index --preview=\"$dtfancydiffcmdsingle\"
+        --header='usage:
+          enter => use fancy difftool : single commit changes
+
+          changes from selected commit to HEAD version:
+
+             F2 => use kitty difftool
+             F3 => use macvim difftool
+             F4 => use icdiff difftool
+             F5 => use fancy difftool'
+
+        --bind=\"enter:execute($dtfancydiffcmdsingle|LESS='-R' less)\"
+        --bind=\"F2:execute($dtkittycmd)\"
+        --bind=\"F3:execute($dtmacvimcmd)\"
+        --bind=\"F4:execute($dticdiffcmd)\"
+        --bind=\"F5:execute($dtfancydiffcmd|less -R)\"
+
+        --bind=\"ctrl-y:execute-silent(echo {} |grep -Eo '[a-f0-9]+' | head -1 | tr -d '\n' |${FORGIT_COPY_CMD:-pbcopy})\"
+        $FORGIT_LOG_FZF_OPTS
+    "
+    eval "git log --graph --color=always --format='%C(auto)%h%d %s %C(black)%C(bold)%cr' $* $forgit_emojify" |
+        FZF_DEFAULT_OPTS="$opts" fzf
+}
+
+
 # git diff viewer
 forgit::diff() {
     forgit::inside_work_tree || return 1
@@ -69,6 +119,30 @@ forgit::icdiff() {
     eval "git diff --name-only --relative $commit -- ${files[*]}"|
         FZF_DEFAULT_OPTS="$opts" fzf
 }
+
+forgit::kittydiff() {
+    forgit::inside_work_tree || return 1
+    local cmd files opts commit
+    [[ $# -ne 0 ]] && {
+        if git rev-parse "$1" -- &>/dev/null ; then
+            commit="$1" && files=("${@:2}")
+        else
+            files=("$@")
+        fi
+    }
+
+    cmd="git dt-kitty --color=always $commit -- {}"
+
+    opts="
+        $FORGIT_FZF_DEFAULT_OPTS
+        +m -0 --preview=\"$cmd\" --preview-window=hidden --bind=\"enter:execute($cmd |LESS='-R' less)\"
+        $FORGIT_DIFF_FZF_OPTS
+    "
+
+    eval "git diff --name-only --relative $commit -- ${files[*]}"|
+        FZF_DEFAULT_OPTS="$opts" fzf
+}
+
 
 
 # git add selector
