@@ -25,6 +25,12 @@ forgit::log() {
         FZF_DEFAULT_OPTS="$opts" fzf
 }
 
+
+forgit_diff_fancy_process(){
+
+  echo "i have run:forgit_diff_fancy_process" > /tmp/abcde
+}
+
 # git choose to use git dt-kitty or other tools to do diff
 # default enter => use fancy difftool to view only the commit changeset
 # changeset from selected commit to master:
@@ -32,12 +38,15 @@ forgit::log() {
 #            F3 => use difffancy difftool
 #            F3 => use macvim difftool
 #            F4 => use icdiff difftool
-
+# the mode switch use the highlighted Capital letter as switch
 
 # --bind=\"enter:execute-multi($debugcmd)\"
+#
+        # --bind=\"F10:execute($debugcmd)\"
 forgit::diffbox() {
     forgit::inside_work_tree || return 1
-    local dtfancydiffcmdsingle opts dtkittycmd dtmacvimcmd dticdiffcmd
+    local dtfancydiffcmdsingle opts dtkittycmd dtmacvimcmd dticdiffcmd modefile
+    modefile=/tmp/forgit_diff_mode
     dtfancydiffcmdsingle="echo {} |grep -Eo '[a-f0-9]+' |head -1 |xargs -I% git show --color=always % $* $forgit_fancy"
 
     dtkittycmd="echo {} |grep -Eo '[a-f0-9]+' |head -1 |xargs -I% git dt-kitty %"
@@ -48,14 +57,13 @@ forgit::diffbox() {
     # debugcmd="echo {} |grep -Eo '[a-f0-9]+' |head -1 |xargs -I% git dt-kitty %"
     # debugcmd="echo {} > /tmp/abcde"
     # debugcmd="echo {} |grep -Eo '[a-f0-9]+' |head -1 > /tmp/abcde"
+    # debugcmd="echo hahaha; read input;"
     opts="
         $FORGIT_FZF_DEFAULT_OPTS
         +s -m --tiebreak=index --preview=\"$dtfancydiffcmdsingle\"
         --header='usage:
           enter => use fancy difftool : single commit changes
-
           changes from selected commit to HEAD version:
-
              F2 => use kitty difftool
              F3 => use macvim difftool
              F4 => use icdiff difftool
@@ -68,10 +76,17 @@ forgit::diffbox() {
         --bind=\"F5:execute($dtfancydiffcmd|less -R)\"
 
         --bind=\"ctrl-y:execute-silent(echo {} |grep -Eo '[a-f0-9]+' | head -1 | tr -d '\n' |${FORGIT_COPY_CMD:-pbcopy})\"
+        --bind=\"ctrl-s:execute-silent(echo 'Single_commit_change_set_view-in-single-selection' > $modefile)\"
+        --bind=\"ctrl-w:execute-silent(echo 'changes_betWeen_current_and_selected-in-single-selection' > $modefile)\"
+        --bind=\"ctrl-r:execute-silent(echo 'changes_between_Range-in-multi-selection' > $modefile)\"
+
+        --bind='?:toggle-preview'
+        --no-cycle
         $FORGIT_LOG_FZF_OPTS
     "
-    eval "git log --graph --color=always --format='%C(auto)%h%d %s %C(black)%C(bold)%cr' $* $forgit_emojify" |
-        FZF_DEFAULT_OPTS="$opts" fzf
+
+    eval "git log --graph --color=always --format='%C(auto)%h%d %C(cyan)%ad %C(green)%s %C(blue)%C(bold)%cr' $* $forgit_emojify --date short" |
+    FZF_DEFAULT_OPTS="$opts" fzf
 }
 
 
@@ -289,9 +304,10 @@ $FZF_DEFAULT_OPTS
 --bind='ctrl-s:toggle-sort'
 --bind='?:toggle-preview'
 --bind='ctrl-w:toggle-preview-wrap'
---height='80%'
+--height='99%'
 --preview-window='right:60%'
 "
+# --height='80%'
 
 # register aliases
 # shellcheck disable=SC2139
