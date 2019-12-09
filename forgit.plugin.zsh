@@ -35,15 +35,98 @@ forgit_diff_fancy_process(){
 # default enter => use fancy difftool to view only the commit changeset
 # changeset from selected commit to master:
 #            F2 => use kitty difftool
-#            F3 => use difffancy difftool
-#            F3 => use macvim difftool
-#            F4 => use icdiff difftool
+#            F3 => use icdiff difftool
+#            F4 => use difffancy difftool
+#            F5 => use macvim difftool
 # the mode switch use the highlighted Capital letter as switch
 
-# --bind=\"enter:execute-multi($debugcmd)\"
-#
-        # --bind=\"F10:execute($debugcmd)\"
 forgit::diffbox() {
+    forgit::inside_work_tree || return 1
+    local dtfancydiffcmdsingle opts dtkittycmd dtmacvimcmd dticdiffcmd modefile shalistfile
+    shalistfile=/tmp/shalist
+    dtfancydiffcmdsingle="echo {} |grep -Eo '[a-f0-9]+' |head -1 |xargs -I% git show --color=always % $* $forgit_fancy"
+
+    rm -f $gitdiffdebuglogfile
+    dtkittycmd="echo {} |grep -Eo '[a-f0-9]+' |head -1 |xargs -I% git dt-kitty %"
+    dtmacvimcmd="echo {} |grep -Eo '[a-f0-9]+' |head -1 |xargs -I% git dt %"
+    dticdiffcmd="echo {} |grep -Eo '[a-f0-9]+' |head -1 |xargs -I% git icdiff %"
+    dtfancydiffcmd="echo {} |grep -Eo '[a-f0-9]+' |head -1 |xargs -I% git diff --color=always % $* $forgit_fancy"
+
+    workchangesmodecmd="echo 'working_changes' > $gitdiffmodefile && echo 'working_changes mode' && sleep 1"
+    stagedchangesmodecmd="echo 'staged_changes' > $gitdiffmodefile && echo 'staged_changes mode' && sleep 1"
+    showcommitmodecmd="echo 'show_commit' > $gitdiffmodefile && echo 'show_commit mode' && sleep 1"
+    rangechangesmodecmd="echo 'range_changes' > $gitdiffmodefile && echo 'range_changes mode' && sleep 1"
+
+    setuptoolkittycmd="echo 'kitty' > $gitdifftoolfile && echo 'set tool: kitty' && sleep 1"
+    setuptoolicdiffcmd="echo 'icdiff' > $gitdifftoolfile && echo 'set tool: icdiff' && sleep 1"
+    setuptoolfancydiffcmd="echo 'fancydiff' > $gitdifftoolfile && echo 'set tool: fancydiff' && sleep 1"
+    setuptoolmacvimcmd="echo 'macvim' > $gitdifftoolfile && echo 'set tool: macvim' && sleep 1"
+
+    execcmd="echo {} |grep -Eo '[a-f0-9]+' > $gitdifftoolshalistfile && $CM_SVC_DIR/forgit_diffbox.zsh && sleep 1"
+    debugcmd="cat $gitdiffdebuglogfile|less -R"
+    helpcmd="cat $gitdiffhelpfile|less -R"
+    echo " $debugcmd" > /tmp/aaa
+    echo """
+          mode:
+             ctrl-w: current work diff
+             ctrl-s: staged diff
+             1:      show single commit changes only
+             0:      show ranged diff of two or current work to the selected single commit
+          tool:
+             F2 => use kitty difftool
+             F3 => use icdiff difftool
+             F4 => use fancy difftool'
+             F5 => use macvim difftool
+          ctrl-x:
+             deselect all
+          ctrl-h:
+             help doc
+          ctrl-d:
+             show debug info
+          ctrl-y:
+             copy the commit SHA
+          ?:
+             toggle preview
+          enter:
+             to execute
+    """ > $gitdiffhelpfile
+
+    opts="
+        $FORGIT_FZF_DEFAULT_OPTS
+        +s -m --tiebreak=index --preview=\"$dtfancydiffcmdsingle\"
+        --header='c-d: debug c-h: help'
+
+        --bind=\"enter:execute($dtfancydiffcmdsingle|LESS='-R' less)\"
+
+        --bind=\"F2:execute($setuptoolkittycmd)\"
+        --bind=\"F3:execute($setuptoolicdiffcmd)\"
+        --bind=\"F4:execute($setuptoolfancydiffcmd)\"
+        --bind=\"F5:execute($setuptoolmacvimcmd)\"
+
+        --bind=\"ctrl-w:execute($workchangesmodecmd)\"
+        --bind=\"ctrl-s:execute($stagedchangesmodecmd)\"
+        --bind=\"1:execute($showcommitmodecmd)\"
+        --bind=\"0:execute($rangechangesmodecmd)\"
+
+        --bind=\"enter:execute-multi($execcmd)\"
+        --bind=\"ctrl-d:execute($debugcmd)\"
+        --bind=\"ctrl-h:execute($helpcmd)\"
+        --bind=\"ctrl-x:deselect-all\"
+
+        --bind=\"ctrl-y:execute-silent(echo {} |grep -Eo '[a-f0-9]+' | head -1 | tr -d '\n' |${FORGIT_COPY_CMD:-pbcopy})\"
+
+        --bind='?:toggle-preview'
+        --no-cycle
+        $FORGIT_LOG_FZF_OPTS
+    "
+
+    # eval "git log --graph --color=always --format='%C(auto)%h%d %C(cyan)%ad %C(green)%s %C(blue)%C(bold)%cr' $* $forgit_emojify --date short" |
+    eval "git log --graph --color=always --format='%C(auto)%h%d %C(cyan)%ad %C(green)%s %C(blue)%C(bold)%cr %C(red)%an' $* $forgit_emojify --date short" |
+    FZF_DEFAULT_OPTS="$opts" fzf
+}
+
+
+forgit::differ() {
     forgit::inside_work_tree || return 1
     local dtfancydiffcmdsingle opts dtkittycmd dtmacvimcmd dticdiffcmd modefile
     modefile=/tmp/forgit_diff_mode
@@ -88,6 +171,7 @@ forgit::diffbox() {
     eval "git log --graph --color=always --format='%C(auto)%h%d %C(cyan)%ad %C(green)%s %C(blue)%C(bold)%cr' $* $forgit_emojify --date short" |
     FZF_DEFAULT_OPTS="$opts" fzf
 }
+
 
 
 # git diff viewer
