@@ -70,8 +70,8 @@ forgit::diffbox() {
           mode:
              ctrl-w: current work diff
              ctrl-s: staged diff
-             1:      show single commit changes only
-             0:      show ranged diff of two or current work to the selected single commit
+             -:      show single commit changes only
+             =:      show ranged diff of two or current work to the selected single commit
           tool:
              F2 => use kitty difftool
              F3 => use icdiff difftool
@@ -85,7 +85,7 @@ forgit::diffbox() {
              show debug info
           ctrl-y:
              copy the commit SHA
-          ?:
+          /:
              toggle preview
           enter:
              to execute
@@ -105,8 +105,8 @@ forgit::diffbox() {
 
         --bind=\"ctrl-w:execute($workchangesmodecmd)\"
         --bind=\"ctrl-s:execute($stagedchangesmodecmd)\"
-        --bind=\"1:execute($showcommitmodecmd)\"
-        --bind=\"0:execute($rangechangesmodecmd)\"
+        --bind=\"-:execute($showcommitmodecmd)\"
+        --bind=\"=:execute($rangechangesmodecmd)\"
 
         --bind=\"enter:execute-multi($execcmd)\"
         --bind=\"ctrl-d:execute($debugcmd)\"
@@ -115,12 +115,11 @@ forgit::diffbox() {
 
         --bind=\"ctrl-y:execute-silent(echo {} |grep -Eo '[a-f0-9]+' | head -1 | tr -d '\n' |${FORGIT_COPY_CMD:-pbcopy})\"
 
-        --bind='?:toggle-preview'
+        --bind='/:toggle-preview'
         --no-cycle
         $FORGIT_LOG_FZF_OPTS
     "
 
-    # eval "git log --graph --color=always --format='%C(auto)%h%d %C(cyan)%ad %C(green)%s %C(blue)%C(bold)%cr' $* $forgit_emojify --date short" |
     eval "git log --graph --color=always --format='%C(auto)%h%d %C(cyan)%ad %C(green)%s %C(blue)%C(bold)%cr %C(red)%an' $* $forgit_emojify --date short" |
     FZF_DEFAULT_OPTS="$opts" fzf
 }
